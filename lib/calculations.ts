@@ -1,3 +1,4 @@
+// lib/calculations.ts
 export interface Settlement {
   from: string;
   to: string;
@@ -42,25 +43,35 @@ export function calculateSettlements(
   // Calculate net balance (positive = should receive, negative = should pay)
   const participantBalances: ParticipantBalance[] = participants.map(p => {
     const b = balances.get(p.id)!;
+    const netBalance = b.paid - b.owes;
     return {
       name: p.name,
-      paid: b.paid,
-      owes: b.owes,
-      balance: b.paid - b.owes,
+      paid: Math.round(b.paid * 100) / 100,
+      owes: Math.round(b.owes * 100) / 100,
+      balance: Math.round(netBalance * 100) / 100,
     };
   });
 
   // Simplified settlement algorithm
   const settlements: Settlement[] = [];
-  const creditors = participantBalances.filter(p => p.balance > 0.01).sort((a, b) => b.balance - a.balance);
-  const debtors = participantBalances.filter(p => p.balance < -0.01).sort((a, b) => a.balance - b.balance);
+
+  // Create copies for settlement calculation (don't mutate original balances)
+  const creditors = participantBalances
+    .filter(p => p.balance > 0.01)
+    .map(p => ({ ...p, remainingBalance: p.balance }))
+    .sort((a, b) => b.balance - a.balance);
+
+  const debtors = participantBalances
+    .filter(p => p.balance < -0.01)
+    .map(p => ({ ...p, remainingBalance: p.balance }))
+    .sort((a, b) => a.balance - b.balance);
 
   let i = 0, j = 0;
   while (i < creditors.length && j < debtors.length) {
     const creditor = creditors[i];
     const debtor = debtors[j];
 
-    const amount = Math.min(creditor.balance, -debtor.balance);
+    const amount = Math.min(creditor.remainingBalance, -debtor.remainingBalance);
 
     if (amount > 0.01) {
       settlements.push({
@@ -70,11 +81,11 @@ export function calculateSettlements(
       });
     }
 
-    creditor.balance -= amount;
-    debtor.balance += amount;
+    creditor.remainingBalance -= amount;
+    debtor.remainingBalance += amount;
 
-    if (Math.abs(creditor.balance) < 0.01) i++;
-    if (Math.abs(debtor.balance) < 0.01) j++;
+    if (Math.abs(creditor.remainingBalance) < 0.01) i++;
+    if (Math.abs(debtor.remainingBalance) < 0.01) j++;
   }
 
   return { balances: participantBalances, settlements };

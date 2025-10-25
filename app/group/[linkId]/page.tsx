@@ -154,6 +154,15 @@ export default function GroupPage() {
   const { balances, settlements } = calculateSettlements(participants, expenses);
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
+  // Debug logging
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    console.log('🔍 Debug Info:');
+    console.log('Participants:', participants);
+    console.log('Expenses:', expenses);
+    console.log('Balances:', balances);
+    console.log('Settlements:', settlements);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto">
@@ -287,7 +296,11 @@ export default function GroupPage() {
               <div className="mb-6">
                 <h3 className="font-semibold mb-2">Balances</h3>
                 {balances.map(b => {
-                  const roundedBalance = Math.round(b.balance * 100) / 100;
+                  const balance = Number(b.balance.toFixed(2));
+                  const isPositive = balance > 0.01;
+                  const isNegative = balance < -0.01;
+                  const isZero = !isPositive && !isNegative;
+
                   return (
                     <div key={b.name} className="flex justify-between py-2 border-b">
                       <div>
@@ -296,9 +309,22 @@ export default function GroupPage() {
                           Paid: ₹{b.paid.toFixed(2)} | Owes: ₹{b.owes.toFixed(2)}
                         </div>
                       </div>
-                      <span className={roundedBalance >= 0.01 ? 'text-green-600 font-bold' : roundedBalance <= -0.01 ? 'text-red-600 font-bold' : 'text-gray-500'}>
-                        {roundedBalance >= 0.01 ? `+₹${roundedBalance.toFixed(2)}` : roundedBalance <= -0.01 ? `-₹${Math.abs(roundedBalance).toFixed(2)}` : '₹0.00'}
-                      </span>
+                      <div className="text-right">
+                        <span className={
+                          isPositive ? 'text-green-600 font-bold' :
+                          isNegative ? 'text-red-600 font-bold' :
+                          'text-gray-500'
+                        }>
+                          {isPositive && `+₹${balance.toFixed(2)}`}
+                          {isNegative && `-₹${Math.abs(balance).toFixed(2)}`}
+                          {isZero && '₹0.00'}
+                        </span>
+                        <div className="text-xs text-gray-400">
+                          {isPositive && 'should receive'}
+                          {isNegative && 'should pay'}
+                          {isZero && 'settled up'}
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
