@@ -154,15 +154,6 @@ export default function GroupPage() {
   const { balances, settlements } = calculateSettlements(participants, expenses);
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
-  // Debug logging
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    console.log('🔍 Debug Info:');
-    console.log('Participants:', participants);
-    console.log('Expenses:', expenses);
-    console.log('Balances:', balances);
-    console.log('Settlements:', settlements);
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto">
