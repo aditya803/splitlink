@@ -1,4 +1,3 @@
-// lib/calculations.ts
 export interface Settlement {
   from: string;
   to: string;
