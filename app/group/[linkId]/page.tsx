@@ -1,9 +1,10 @@
+// app/group/[linkId]/page.tsx
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { calculateSettlements } from '@/lib/calculations';
-import html2canvas from 'html-to-image';
+import * as htmlToImage from 'html-to-image';
 import jsPDF from 'jspdf';
 
 interface Participant {
@@ -105,22 +106,32 @@ export default function GroupPage() {
 
   const exportAsPNG = async () => {
     if (summaryRef.current) {
-      const dataUrl = await html2canvas.toPng(summaryRef.current);
-      const link = document.createElement('a');
-      link.download = `${group.name}-settlement.png`;
-      link.href = dataUrl;
-      link.click();
+      try {
+        const dataUrl = await htmlToImage.toPng(summaryRef.current);
+        const link = document.createElement('a');
+        link.download = `${group.name}-settlement.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (error) {
+        console.error('Error exporting PNG:', error);
+        alert('Failed to export PNG');
+      }
     }
   };
 
   const exportAsPDF = async () => {
     if (summaryRef.current) {
-      const dataUrl = await html2canvas.toPng(summaryRef.current);
-      const pdf = new jsPDF();
-      const imgWidth = 190;
-      const imgHeight = (summaryRef.current.offsetHeight * imgWidth) / summaryRef.current.offsetWidth;
-      pdf.addImage(dataUrl, 'PNG', 10, 10, imgWidth, imgHeight);
-      pdf.save(`${group.name}-settlement.pdf`);
+      try {
+        const dataUrl = await htmlToImage.toPng(summaryRef.current);
+        const pdf = new jsPDF();
+        const imgWidth = 190;
+        const imgHeight = (summaryRef.current.offsetHeight * imgWidth) / summaryRef.current.offsetWidth;
+        pdf.addImage(dataUrl, 'PNG', 10, 10, imgWidth, imgHeight);
+        pdf.save(`${group.name}-settlement.pdf`);
+      } catch (error) {
+        console.error('Error exporting PDF:', error);
+        alert('Failed to export PDF');
+      }
     }
   };
 
@@ -275,14 +286,22 @@ export default function GroupPage() {
 
               <div className="mb-6">
                 <h3 className="font-semibold mb-2">Balances</h3>
-                {balances.map(b => (
-                  <div key={b.name} className="flex justify-between py-2 border-b">
-                    <span>{b.name}</span>
-                    <span className={b.balance >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {b.balance >= 0 ? `+₹${b.balance.toFixed(2)}` : `-₹${Math.abs(b.balance).toFixed(2)}`}
-                    </span>
-                  </div>
-                ))}
+                {balances.map(b => {
+                  const roundedBalance = Math.round(b.balance * 100) / 100;
+                  return (
+                    <div key={b.name} className="flex justify-between py-2 border-b">
+                      <div>
+                        <div className="font-medium">{b.name}</div>
+                        <div className="text-xs text-gray-500">
+                          Paid: ₹{b.paid.toFixed(2)} | Owes: ₹{b.owes.toFixed(2)}
+                        </div>
+                      </div>
+                      <span className={roundedBalance >= 0.01 ? 'text-green-600 font-bold' : roundedBalance <= -0.01 ? 'text-red-600 font-bold' : 'text-gray-500'}>
+                        {roundedBalance >= 0.01 ? `+₹${roundedBalance.toFixed(2)}` : roundedBalance <= -0.01 ? `-₹${Math.abs(roundedBalance).toFixed(2)}` : '₹0.00'}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
 
               <div>
