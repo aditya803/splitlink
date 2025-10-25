@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@supabase/supabase-js": "^2.76.1",
     "drizzle-orm": "^0.44.7",
     "html-to-image": "^1.11.13",
     "jspdf": "^3.0.3",
