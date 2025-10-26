@@ -1,11 +1,11 @@
 // app/group/[linkId]/page.tsx
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
 import { calculateSettlements } from '@/lib/calculations';
 import * as htmlToImage from 'html-to-image';
 import jsPDF from 'jspdf';
+import { useParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 interface Participant {
   id: string;
@@ -35,6 +35,11 @@ export default function GroupPage() {
   const [paidBy, setPaidBy] = useState('');
   const [splitType, setSplitType] = useState<'equal' | 'custom'>('equal');
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
+
+  // Add participant form
+  const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [newParticipantName, setNewParticipantName] = useState('');
+  const [addingParticipant, setAddingParticipant] = useState(false);
 
   const summaryRef = useRef<HTMLDivElement>(null);
 
@@ -98,6 +103,37 @@ export default function GroupPage() {
     }
   };
 
+  const addParticipant = async () => {
+    if (!newParticipantName.trim()) {
+      alert('Please enter a name');
+      return;
+    }
+
+    setAddingParticipant(true);
+    try {
+      const response = await fetch(`/api/groups/${linkId}/participants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newParticipantName.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        setNewParticipantName('');
+        setShowAddParticipant(false);
+        await fetchGroupData();
+        alert(`${newParticipantName} has been added to the group!`);
+      } else {
+        alert('Failed to add participant');
+      }
+    } catch (error) {
+      alert('Error adding participant');
+    } finally {
+      setAddingParticipant(false);
+    }
+  };
+
   const copyLink = () => {
     const link = `${window.location.origin}/group/${linkId}`;
     navigator.clipboard.writeText(link);
@@ -153,6 +189,15 @@ export default function GroupPage() {
 
   const { balances, settlements } = calculateSettlements(participants, expenses);
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+  // Debug logging
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    console.log('🔍 Debug Info:');
+    console.log('Participants:', participants);
+    console.log('Expenses:', expenses);
+    console.log('Balances:', balances);
+    console.log('Settlements:', settlements);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -243,8 +288,65 @@ export default function GroupPage() {
                       {p.name}
                     </label>
                   ))}
+
+                  {/* Add Participant Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAddParticipant(true)}
+                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-1"
+                  >
+                    <span className="text-lg">+</span>
+                    <span>Don't see your name? Add yourself</span>
+                  </button>
                 </div>
               </div>
+
+              {/* Add Participant Dialog */}
+              {showAddParticipant && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+                    <h3 className="text-lg font-semibold mb-4">Add Yourself to Group</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Your name</label>
+                        <input
+                          type="text"
+                          value={newParticipantName}
+                          onChange={(e) => setNewParticipantName(e.target.value)}
+                          placeholder="Enter your name"
+                          className="w-full px-3 py-2 border rounded-lg"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              addParticipant();
+                            }
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={addParticipant}
+                          disabled={addingParticipant}
+                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                        >
+                          {addingParticipant ? 'Adding...' : 'Add Me'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddParticipant(false);
+                            setNewParticipantName('');
+                          }}
+                          className="px-4 py-2 text-gray-600 hover:text-gray-800 border rounded-lg"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={addExpense}
